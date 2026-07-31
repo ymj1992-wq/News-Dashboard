@@ -12,6 +12,7 @@
     --fxbg:#fffbeb; --fxline:#fde68a; --fxink:#78350f; --fxlabel:#92400e;
     --church:#7c3aed; --canada:#dc2626; --korea:#0284c7; --world:#059669;
     --it:#ea580c; --community:#0d9488; --theology:#9333ea; --bible:#b45309; --fx:#ca8a04;
+    --manna:#c2410c; --devlife:#15803d;
     --accent:#0284c7; --new:#dc2626;
   }
   html[data-theme="dark"]{
@@ -35,6 +36,11 @@
   .topbar .meta b{color:#fff;}
   .badge-unread{background:#dc2626;color:#fff;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:700;}
   .tools{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+  .geo-tools{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+  .geo-grp{display:inline-flex;gap:5px;align-items:center;background:rgba(255,255,255,.06);
+    border:1px solid var(--btnline);border-radius:9px;padding:3px 6px;}
+  .geo-tag{font-size:11px;color:#cbd5e1;font-weight:700;white-space:nowrap;}
+  .geo-x{padding:5px 8px !important;}
   .toolset{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
   .toolset.closed{display:none;}
   #toolsToggle{display:none;}
@@ -83,6 +89,22 @@
   .cat-korea h2{background:var(--korea);}   .cat-world h2{background:var(--world);}
   .cat-it h2{background:var(--it);}         .cat-community h2{background:var(--community);}
   .cat-theology h2{background:var(--theology);} .cat-bible h2{background:var(--bible);}
+  .cat-devotion-manna h2{background:var(--manna);} .cat-devotion-life h2{background:var(--devlife);}
+  /* 오늘의 묵상 박스 */
+  .devo-today{margin:9px 12px 4px;padding:12px 13px;border-radius:12px;
+    background:var(--box);border:1px solid var(--line);}
+  .dv-head{font-size:11.5px;font-weight:800;color:var(--sub);letter-spacing:.02em;margin-bottom:8px;}
+  .dv-block{padding:9px 0;}
+  .dv-block + .dv-block{border-top:1px dashed var(--line);margin-top:2px;}
+  .dv-name{font-size:11px;font-weight:800;color:var(--accent);margin-bottom:5px;letter-spacing:.01em;}
+  .dv-theme{font-size:15px;font-weight:800;color:var(--ink);line-height:1.4;margin-bottom:8px;}
+  .dv-row{display:flex;gap:8px;font-size:12.5px;line-height:1.6;padding:1px 0;}
+  .dv-lb{flex:0 0 52px;color:var(--sub);font-weight:700;}
+  .dv-vl{flex:1;color:var(--ink);}
+  .dv-none{font-size:12.5px;color:var(--sub);line-height:1.6;margin:2px 0 4px;}
+  .dv-link{display:inline-block;margin-top:9px;font-size:12px;font-weight:700;
+    color:var(--accent);text-decoration:none;}
+  .dv-link:hover{text-decoration:underline;}
   .cat-fx h2{background:var(--fx);}
   .card.collapsed .cardbody{display:none;}
 
@@ -130,6 +152,7 @@
     padding:0 15px;max-height:0;overflow:hidden;transition:max-height .28s ease,padding .28s ease;}
   .acc.open{max-height:640px;padding:12px 15px 13px;}
   .acc .s-body{font-size:12.9px;line-height:1.72;color:var(--ink);}
+  .acc .s-en{margin-top:7px;font-size:11px;color:var(--sub);font-style:italic;opacity:.85;}
   .acc .s-meta{margin-top:8px;font-size:11.5px;color:var(--sub);}
   .acc .s-meta a{color:var(--accent);text-decoration:none;font-weight:600;}
   .acc .s-meta a:hover{text-decoration:underline;}
@@ -230,6 +253,9 @@
     /* 폰에서는 ⚙ 도구 버튼을 보이고, 도구 묶음은 접어 화면을 아낌 */
     #toolsToggle{display:inline-block;}
     .toolset{width:100%;margin-top:6px;}
+    .geo-tools{width:100%;flex-direction:column;align-items:stretch;}
+    .geo-grp{width:100%;flex-wrap:wrap;}
+    .geo-grp .geosel{flex:1 1 30%;min-width:80px;}
     .searchbox{max-width:none;flex:1 1 60%;}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none !important;}}
@@ -249,6 +275,7 @@
       <div class="searchbox"><input id="q" type="search" placeholder="제목·요약 검색…" autocomplete="off"></div>
       <button class="tbtn" id="toolsToggle" title="도구 열기/닫기" aria-expanded="true">⚙ 도구 ▾</button>
       <div class="toolset" id="toolset">
+        <span id="geoTools" class="geo-tools"></span>
         <select class="tbtn" id="dateSel" title="날짜별 지난 뉴스"></select>
         <select class="tbtn" id="sortSel" title="정렬">
           <option value="new">새 소식 우선</option>
@@ -415,6 +442,8 @@ community: { title:"🧳 한인사회 · 이민 · 동포청", color:"community"
   summary:"온타리오주가 6월 26일자로 기존 OINP 8개 스트림을 모두 종료하고, 노동시장 수요에 맞춘 새로운 Workforce Priority Stream으로 전면 개편했다. 종료된 스트림으로는 더 이상 초청장이 발급되지 않는다. BC주도 별도 정원 상한을 둔 신규 등록 절차를 운영 중이어서, 주정부 이민을 준비하는 분들은 주별 규정을 새로 확인해야 한다.",
   source:"Immigration News Canada",url:"https://immigrationnewscanada.ca/new-canada-immigration-changes-july-2026/"},
 ]},
+"devotion-manna": { title:"🍞 오늘의 양식", color:"devotion-manna", items:[] },
+"devotion-life": { title:"🌱 생명의 삶 (QT)", color:"devotion-life", items:[] },
 theology: { title:"📚 신학 · 서적", color:"theology", items:[
  {id:"th1",title:"부흥과개혁사, 신현우 저 신간 출간 (7월 15일)",date:"2026-07-15",
   summary:"개혁주의 신학서 전문 출판사 부흥과개혁사가 신현우 교수의 신간을 7월 15일 출간했다(신국판 양장, 216쪽). 같은 출판사는 낸시 도슨·유진 메릴·안드레아스 쾨스텐베르거의 『All the Genealogies of the Bible』 번역서도 준비 중이다. 성경 족보를 도표와 주해로 정리한 책으로, 창세기·역대상·마태복음 강해를 준비할 때 참고할 만하다.",
@@ -484,7 +513,41 @@ const state = {
 };
 
 const READ_VISIBLE = 5;          /* 읽은 뉴스 노출 개수 */
-const ORDER = ['church','canada','korea','world','it','community','theology','bible'];
+const ORDER = ['church','canada','korea','world','it','community','devotion-manna','devotion-life','theology','bible'];
+
+/* 지역 계층 데이터 — 재외동포 분포 기준. 카테고리별로 어떤 지역 세트를 쓸지 GEO_FOR로 지정 */
+const GEO_KOREAN = {"미국": {"캘리포니아": ["로스앤젤레스", "오렌지카운티", "샌프란시스코", "산호세", "샌디에이고", "새크라멘토"], "뉴욕": ["뉴욕시", "플러싱", "롱아일랜드"], "뉴저지": ["팰리세이즈파크", "포트리", "에디슨"], "텍사스": ["댈러스", "휴스턴", "오스틴"], "워싱턴": ["시애틀", "타코마", "벨뷰"], "조지아": ["애틀랜타", "둘루스"], "일리노이": ["시카고"], "버지니아": ["페어팩스", "애난데일"], "하와이": ["호놀룰루"], "펜실베이니아": ["필라델피아"], "매사추세츠": ["보스턴"]}, "캐나다": {"온타리오": ["토론토", "노스욕", "미시소가", "오타와", "런던"], "브리티시컬럼비아": ["밴쿠버", "코퀴틀람", "버나비", "빅토리아"], "앨버타": ["캘거리", "에드먼턴"], "퀘벡": ["몬트리올"], "매니토바": ["위니펙"], "뉴브런즈윅": ["프레드릭턴", "몽튼", "세인트존"], "노바스코샤": ["핼리팩스"]}, "중국": {"지린성": ["옌지", "창춘"], "랴오닝성": ["선양", "다롄"], "헤이룽장성": ["하얼빈", "무단장"], "베이징시": ["베이징"], "상하이시": ["상하이"], "산둥성": ["칭다오", "웨이하이"]}, "일본": {"도쿄도": ["도쿄", "신주쿠", "신오쿠보"], "오사카부": ["오사카", "이쿠노"], "교토부": ["교토"], "효고현": ["고베"], "아이치현": ["나고야"], "가나가와현": ["요코하마", "가와사키"]}, "호주": {"뉴사우스웨일스": ["시드니", "스트라스필드"], "빅토리아": ["멜버른"], "퀸즐랜드": ["브리즈번", "골드코스트"]}, "독일": {"노르트라인베스트팔렌": ["프랑크푸르트", "뒤셀도르프", "쾰른"], "베를린": ["베를린"], "바이에른": ["뮌헨"], "함부르크": ["함부르크"]}, "영국": {"잉글랜드": ["런던", "뉴몰든", "킹스턴"]}, "뉴질랜드": {"오클랜드": ["오클랜드"], "캔터베리": ["크라이스트처치"]}, "베트남": {"호치민시": ["호치민"], "하노이시": ["하노이"]}, "필리핀": {"메트로마닐라": ["마닐라", "케손시티"], "세부": ["세부시티"]}, "브라질": {"상파울루": ["상파울루"]}, "아르헨티나": {"부에노스아이레스": ["부에노스아이레스"]}, "싱가포르": {"싱가포르": ["싱가포르"]}, "인도네시아": {"자카르타": ["자카르타"]}, "태국": {"방콕": ["방콕"]}, "말레이시아": {"쿠알라룸푸르": ["쿠알라룸푸르"]}, "아랍에미리트": {"두바이": ["두바이"], "아부다비": ["아부다비"]}, "프랑스": {"일드프랑스": ["파리"]}, "러시아": {"연해주": ["블라디보스토크"], "모스크바": ["모스크바"]}, "우즈베키스탄": {"타슈켄트": ["타슈켄트"]}, "카자흐스탄": {"알마티": ["알마티"]}, "멕시코": {"멕시코시티": ["멕시코시티"]}, "한국": {}};
+const GEO_CANADA = {"캐나다": {"뉴브런즈윅": ["프레드릭턴", "몽튼", "세인트존", "디에프", "리버뷰", "오로모토", "배서스트", "미라미시"], "노바스코샤": ["핼리팩스", "다트머스", "시드니"], "프린스에드워드아일랜드": ["샬럿타운"], "뉴펀들랜드래브라도": ["세인트존스"], "온타리오": ["토론토", "오타와", "미시소가", "런던", "해밀턴"], "퀘벡": ["몬트리올", "퀘벡시티"], "브리티시컬럼비아": ["밴쿠버", "빅토리아"], "앨버타": ["캘거리", "에드먼턴"], "매니토바": ["위니펙"], "서스캐처원": ["새스커툰", "리자이나"]}};
+const GEO_FOR = { community: GEO_KOREAN, canada: GEO_CANADA };
+
+/* ── 묵상 스케줄 ──
+   날짜별로 오늘의 양식(manna)·생명의 삶(life)의 주제/본문/핵심구절을 담는다.
+   핵심구절은 저작권을 고려해 짧게만 싣고, 전문은 링크로 연결한다.
+   여기 없는 날짜는 자동으로 '오늘의 묵상 바로 보기' 링크만 표시된다. */
+const DEVO_SCHEDULE = {
+  "2026-08-01": {
+    manna: {
+      ko: { theme:"더 나은 본향을 사모하며", passage:"히브리서 11:8-16",
+            key:"더 나은 본향 곧 하늘에 있는 것 (히 11:16)", reading:"시편 57-59; 로마서 4", hymn:"새찬송가 488(통539)" },
+      en: { theme:"Longing for a Better Country", passage:"Hebrews 11:8-16",
+            key:"longing for a better country—a heavenly one (Heb 11:16)" }
+    },
+    life: {
+      ko: { theme:"내가 여호와를 항상 송축하리라", passage:"시편 34:1-10",
+            key:"내가 여호와를 항상 송축함이여 (시 34:1)" },
+      en: { theme:"I Will Bless the LORD at All Times", passage:"Psalm 34:1-10",
+            key:"I will extol the LORD at all times (Ps 34:1)" }
+    }
+  }
+};
+/* 그날 QT 페이지로 바로 가는 링크(한글/영어 각각) */
+function devoUrl(kind, ymd){
+  if(kind==='manna-ko') return "https://www.odbkorea.org/";
+  if(kind==='manna-en') return "https://odb.org/";
+  if(kind==='life-ko')  return "https://www.duranno.com/qt/view/bible.asp?qtDate=" + ymd;
+  if(kind==='life-en')  return "https://www.duranno.com/qt/view/language.asp";
+  return "";
+}
 
 /* ---- 데이터 적재 --------------------------------------------------- */
 function dayOf(iso){ try{ return new Date(iso).toISOString().slice(0,10); }catch(e){ return String(iso).slice(0,10); } }
@@ -500,6 +563,14 @@ function bootData(){
   const saved = jget(K.data, null);
   let data = DEFAULT_DATA;
   if(saved && saved.updatedAt && new Date(saved.updatedAt) >= new Date(DEFAULT_DATA.updatedAt)) data = saved;
+
+  /* 기본 데이터에 새로 생긴 섹션이 저장 데이터에는 없을 수 있다.
+     저장 데이터에 없는 카테고리는 기본 데이터의 것을 채워 넣어, 새 섹션이 항상 보이게 한다. */
+  if(data !== DEFAULT_DATA && data.news && DEFAULT_DATA.news){
+    for(const k of Object.keys(DEFAULT_DATA.news)){
+      if(!data.news[k]) data.news[k] = DEFAULT_DATA.news[k];
+    }
+  }
   state.data = data;
 
   /* 이 데이터셋을 처음 보는가? → 새 항목 계산 */
@@ -552,20 +623,45 @@ function matches(it, q){
   return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => s.includes(w));
 }
 
-/* ── 지역 필터(동포뉴스 등): 항목의 country/region/city 필드 기준 ── */
-function geoOf(it){
-  return { country: it.country||'', region: it.region||'', city: it.city||'' };
+/* ── 지역 필터 ──
+   선택값(state.geo[key] = {country,region,city})으로 항목을 거른다.
+   매칭: 항목에 country/region/city 필드가 있으면 그 값으로,
+   없으면 제목+요약 텍스트에 지역명이 들어있는지로 판단한다. */
+function itemText(it){ return (it.title||'') + ' ' + (it.summary||''); }
+/* 지역 한 단계 매칭:
+   - 항목에 해당 필드가 있으면 그 값과 일치해야 함
+   - 없으면 본문 텍스트에 지역명이 들어있는지 확인
+   - 상위(나라·주)는 그 아래 하위 지명이 본문에 있어도 통과시킨다 */
+function geoNames(key, level, value){
+  const tree = GEO_FOR[key]; const names = [value];
+  if(!tree) return names;
+  if(level==='country' && tree[value]){
+    for(const region of Object.keys(tree[value])){
+      names.push(region, ...(tree[value][region]||[]));
+    }
+  } else if(level==='region'){
+    for(const country of Object.keys(tree)){
+      if(tree[country][value]) names.push(...tree[country][value]);
+    }
+  }
+  return names;
+}
+function geoHit(it, key, level, value){
+  if(!value) return true;
+  const fv = it[level];
+  if(fv) return fv === value;                 /* 필드가 있으면 필드 우선 */
+  const text = itemText(it);
+  return geoNames(key, level, value).some(n => n && text.includes(n));
 }
 function geoPass(it, key){
   const sel = state.geo[key]; if(!sel) return true;
-  const g = geoOf(it);
-  if(sel.country && g.country !== sel.country) return false;
-  if(sel.region  && g.region  !== sel.region)  return false;
-  if(sel.city    && g.city    !== sel.city)    return false;
+  if(sel.country && !geoHit(it,key,'country',sel.country)) return false;
+  if(sel.region  && !geoHit(it,key,'region', sel.region))  return false;
+  if(sel.city    && !geoHit(it,key,'city',   sel.city))    return false;
   return true;
 }
-/* 이 카드가 지역 필터를 쓸 수 있는가(항목 중 하나라도 country가 있으면) */
-function hasGeo(items){ return (items||[]).some(it => it.country); }
+/* 이 카테고리가 지역 필터 대상인가 — GEO_FOR에 정의돼 있으면 대상 */
+function hasGeo(key){ return !!GEO_FOR[key]; }
 
 function arrange(items, key){
   const live = state.viewDate === '';
@@ -604,31 +700,128 @@ function itemHtml(key, it, opts){
   </div>
   <div class="acc ${open?'open':''}">
     <div class="s-body">${esc(it.summary||'')}</div>
-    <div class="s-meta">출처: ${esc(it.source||'-')}${it.url?` · <a href="${esc(it.url)}" target="_blank" rel="noopener">원문 보기 ↗</a>`:''}</div>
+    ${it.title_en?`<div class="s-en">원제: ${esc(it.title_en)}</div>`:''}
+    <div class="s-meta">출처: ${esc(it.source||'-')}${it.url?` · <a href="${esc(it.url)}" target="_blank" rel="noopener">${isArticleUrl(it.url)?'기사 원문 보기':'매체 홈에서 찾기'} ↗</a>`:''}</div>
+  </div>`;
+}
+/* URL이 개별 기사로 보이는가(경로가 충분히 깊거나 숫자 id 포함) vs 매체 홈 */
+function isArticleUrl(u){
+  try{
+    const url = new URL(u);
+    const path = url.pathname.replace(/\/+$/,'');
+    if(!path || path === '') return false;                 /* 도메인만 */
+    const segs = path.split('/').filter(Boolean);
+    if(segs.length >= 2) return true;                       /* /news/canada/... 등 */
+    if(/\d{4,}/.test(path)) return true;                    /* 기사 번호 포함 */
+    if(url.search && /\d{3,}/.test(url.search)) return true;/* ?id=12345 등 */
+    return false;
+  }catch(e){ return false; }
+}
+/* 오늘 날짜(현지) YYYY-MM-DD */
+function todayYmd(){
+  try{
+    const s = new Intl.DateTimeFormat('en-CA',{timeZone:'America/Halifax',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date());
+    return s;  /* en-CA는 YYYY-MM-DD */
+  }catch(e){ return new Date().toISOString().slice(0,10); }
+}
+
+/* 두 묵상 섹션 상단에 넣을 '오늘의 묵상' 박스 — 한글판·영어판 각각 표시 */
+function devoTodayHtml(key){
+  const kind = key==='devotion-manna' ? 'manna' : key==='devotion-life' ? 'life' : '';
+  if(!kind) return '';
+  const ymd = todayYmd();
+  const sch = (DEVO_SCHEDULE[ymd] || {})[kind];
+  const dateLabel = (()=>{ try{
+    return new Intl.DateTimeFormat('ko-KR',{timeZone:'America/Halifax',month:'long',day:'numeric',weekday:'short'}).format(new Date());
+  }catch(e){ return ymd; } })();
+
+  const koLink = devoUrl(kind+'-ko', ymd);
+  const enLink = devoUrl(kind+'-en', ymd);
+  const koName = kind==='manna' ? '오늘의 양식 (한글)' : '생명의 삶 (한글)';
+  const enName = kind==='manna' ? 'Our Daily Bread (English)' : 'Living Life (English)';
+
+  /* 한 언어 블록 만들기 */
+  const block = (name, d, link, isEn) => {
+    if(!d){
+      return `<div class="dv-block">
+        <div class="dv-name">${esc(name)}</div>
+        <div class="dv-none">오늘 본문 정보가 아직 준비되지 않았습니다.</div>
+        <a class="dv-link" href="${esc(link)}" target="_blank" rel="noopener">${isEn?'Open today ↗':'오늘의 묵상 보기 ↗'}</a>
+      </div>`;
+    }
+    const rows = [];
+    rows.push(`<div class="dv-theme">${esc(d.theme)}</div>`);
+    rows.push(`<div class="dv-row"><span class="dv-lb">${isEn?'Text':'본문'}</span><span class="dv-vl">${esc(d.passage)}</span></div>`);
+    if(d.key)     rows.push(`<div class="dv-row"><span class="dv-lb">${isEn?'Verse':'구절'}</span><span class="dv-vl">${esc(d.key)}</span></div>`);
+    if(d.reading) rows.push(`<div class="dv-row"><span class="dv-lb">성경읽기</span><span class="dv-vl">${esc(d.reading)}</span></div>`);
+    if(d.hymn)    rows.push(`<div class="dv-row"><span class="dv-lb">찬송</span><span class="dv-vl">${esc(d.hymn)}</span></div>`);
+    return `<div class="dv-block">
+      <div class="dv-name">${esc(name)}</div>
+      ${rows.join('')}
+      <a class="dv-link" href="${esc(link)}" target="_blank" rel="noopener">${isEn?'Full devotion ↗':'전문·묵상·기도 보기 ↗'}</a>
+    </div>`;
+  };
+
+  return `<div class="devo-today">
+    <div class="dv-head">📖 오늘의 묵상 · ${esc(dateLabel)}</div>
+    ${block(koName, sch && sch.ko, koLink, false)}
+    ${block(enName, sch && sch.en, enLink, true)}
   </div>`;
 }
 
-function geoFilterHtml(key, items){
-  if(!hasGeo(items)) return '';
-  const sel = state.geo[key] || {};
-  /* 현재 상위 선택을 반영해 하위 옵션 목록을 만든다 */
-  const countries = [...new Set(items.map(i=>i.country).filter(Boolean))].sort();
-  const regions = [...new Set(items
-    .filter(i => !sel.country || i.country===sel.country)
-    .map(i=>i.region).filter(Boolean))].sort();
-  const cities = [...new Set(items
-    .filter(i => (!sel.country || i.country===sel.country) && (!sel.region || i.region===sel.region))
-    .map(i=>i.city).filter(Boolean))].sort();
+/* 지역 필터를 쓸 카테고리 목록(현재 보기에 존재하는 것만) */
+function geoCatKeys(){
+  const news = state.view.news || {};
+  return Object.keys(GEO_FOR).filter(k => news[k]);
+}
+const GEO_LABEL = { community:'동포뉴스', canada:'뉴브런즈윅' };
+
+/* 도구바에 넣을 지역 선택 — 대상 카테고리마다 나라/주·도/도시 드롭다운 */
+function renderGeoTools(){
+  const host = document.getElementById('geoTools');
+  if(!host) return;
+  const keys = geoCatKeys();
+  if(!keys.length){ host.innerHTML=''; return; }
   const opt = (list, cur, label) =>
     `<option value="">${label}</option>` +
     list.map(v => `<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(v)}</option>`).join('');
-  const active = sel.country || sel.region || sel.city;
-  return `<div class="geobar">
-    <select class="geosel" data-geo="${key}" data-lvl="country">${opt(countries, sel.country||'', '🌐 전체 나라')}</select>
-    ${regions.length?`<select class="geosel" data-geo="${key}" data-lvl="region">${opt(regions, sel.region||'', '주/도 전체')}</select>`:''}
-    ${cities.length?`<select class="geosel" data-geo="${key}" data-lvl="city">${opt(cities, sel.city||'', '도시 전체')}</select>`:''}
-    ${active?`<button class="geoclear" data-geoclear="${key}" title="지역 필터 해제">✕</button>`:''}
-  </div>`;
+
+  host.innerHTML = keys.map(key=>{
+    const tree = GEO_FOR[key];
+    const sel = state.geo[key] || {};
+    const countries = Object.keys(tree).sort();
+    const regions = sel.country && tree[sel.country] ? Object.keys(tree[sel.country]).sort() : [];
+    const cities = (sel.country && sel.region && tree[sel.country] && tree[sel.country][sel.region])
+                   ? tree[sel.country][sel.region].slice().sort() : [];
+    const active = sel.country || sel.region || sel.city;
+    const tag = GEO_LABEL[key] || key;
+    return `<span class="geo-grp">`
+      + `<span class="geo-tag">📍${tag}</span>`
+      + `<select class="tbtn geosel" data-geo="${key}" data-lvl="country" title="${tag} 나라">${opt(countries, sel.country||'', '나라 전체')}</select>`
+      + (regions.length?`<select class="tbtn geosel" data-geo="${key}" data-lvl="region" title="주/도">${opt(regions, sel.region||'', '주/도 전체')}</select>`:'')
+      + (cities.length?`<select class="tbtn geosel" data-geo="${key}" data-lvl="city" title="도시">${opt(cities, sel.city||'', '도시 전체')}</select>`:'')
+      + (active?`<button class="tbtn geo-x" data-geoclear="${key}" title="해제">✕</button>`:'')
+      + `</span>`;
+  }).join('');
+  bindGeoTools();
+}
+
+function bindGeoTools(){
+  const host = document.getElementById('geoTools');
+  if(!host) return;
+  host.querySelectorAll('[data-geo]').forEach(el => el.onchange = e => {
+    e.stopPropagation();
+    const k = el.dataset.geo, lvl = el.dataset.lvl, v = el.value;
+    const g = Object.assign({}, state.geo[k]);
+    g[lvl] = v;
+    if(lvl==='country'){ g.region=''; g.city=''; }
+    if(lvl==='region'){ g.city=''; }
+    state.geo[k] = g; render();
+  });
+  host.querySelectorAll('[data-geoclear]').forEach(el => el.onclick = e => {
+    e.stopPropagation();
+    state.geo[el.dataset.geoclear] = {}; render();
+  });
 }
 
 function cardHtml(key, cat){
@@ -639,26 +832,32 @@ function cardHtml(key, cat){
   const hidden = read.length - readShown.length;
   const opts = { isRead, isNew };
 
-  const geo = geoFilterHtml(key, cat.items||[]);
+  const geo = '';
+  const isDevo = (key==='devotion-manna' || key==='devotion-life');
+  const devo = isDevo ? devoTodayHtml(key) : '';
 
   let body = '';
-  if(!unread.length && !readShown.length){
+  if(isDevo){
+    body = '';   /* 묵상 섹션은 뉴스 목록 없이 오늘의 묵상 박스만 보여준다 */
+  } else if(!unread.length && !readShown.length){
     body = `<div class="empty">표시할 뉴스가 없습니다.</div>`;
   } else {
     body += unread.map(it => itemHtml(key, it, opts)).join('');
     if(readShown.length) body += `<div class="divider-read">읽은 뉴스 ${read.length}건</div>`;
     body += readShown.map(it => itemHtml(key, it, opts)).join('');
   }
-  const more = hidden > 0
+  const more = (!isDevo && hidden > 0)
     ? `<button class="morebtn" data-more="${key}">읽은 뉴스 ${hidden}건 더 보기</button>`
-    : (showAll && read.length > READ_VISIBLE ? `<button class="morebtn" data-more="${key}">접기</button>` : '');
+    : (!isDevo && showAll && read.length > READ_VISIBLE ? `<button class="morebtn" data-more="${key}">접기</button>` : '');
+  const listHtml = isDevo ? '' : `<div class="list">${body}</div>`;
+  const cntHtml = isDevo ? `<span class="cnt">오늘의 묵상</span>` : `<span class="cnt">${unread.length}건 미확인</span>`;
 
   return `<div class="card cat-${cat.color} ${collapsed?'collapsed':''}" data-key="${key}">
     <h2 data-toggle="${key}"><span class="htitle">
         <button class="grip" data-grip="${key}" title="끌어서 위치 이동 (폰은 길게 눌러서, 키보드는 방향키)">⠿</button>
         <span class="caret">▼</span>${esc(cat.title)}</span>
-      <span class="cnt">${unread.length}건 미확인</span></h2>
-    <div class="cardbody">${geo}<div class="list">${body}</div>${more}</div>
+      ${cntHtml}</h2>
+    <div class="cardbody">${devo}${geo}${listHtml}${more}</div>
   </div>`;
 }
 
@@ -1010,6 +1209,7 @@ function render(){
   } else b.style.display='none';
 
   document.getElementById('unreadBtn').classList.toggle('on', state.prefs.unreadOnly);
+  renderGeoTools();
   bind();
 }
 
@@ -1068,22 +1268,6 @@ function bind(){
   });
   grid.querySelectorAll('[data-more]').forEach(el => el.onclick = () => {
     const k = el.dataset.more; state.showAllRead[k] = !state.showAllRead[k]; render();
-  });
-
-  /* 지역 필터 드롭다운 */
-  grid.querySelectorAll('[data-geo]').forEach(el => el.onchange = e => {
-    e.stopPropagation();
-    const k = el.dataset.geo, lvl = el.dataset.lvl, v = el.value;
-    const g = Object.assign({}, state.geo[k]);
-    g[lvl] = v;
-    /* 상위가 바뀌면 하위 선택 초기화 */
-    if(lvl === 'country'){ g.region=''; g.city=''; }
-    if(lvl === 'region'){ g.city=''; }
-    state.geo[k] = g; render();
-  });
-  grid.querySelectorAll('[data-geoclear]').forEach(el => el.onclick = e => {
-    e.stopPropagation();
-    state.geo[el.dataset.geoclear] = {}; render();
   });
   grid.querySelectorAll('[data-swap]').forEach(el => el.onclick = () => {
     const k = el.dataset.swap; state.fxInv[k] = !state.fxInv[k]; render();
@@ -1241,6 +1425,46 @@ async function fetchFeed(feedUrl){
 }
 
 /* 카테고리 하나 채우기 */
+/* 영문으로 들어오는 피드가 있는 카테고리 — 제목·요약을 한글로 번역 */
+const ENGLISH_CATS = new Set(['canada','world','it','bible','church']);
+
+/* 한글이 이미 상당히 섞여 있으면 번역 불필요 */
+function looksKorean(s){
+  const kor = (s.match(/[가-힣]/g)||[]).length;
+  return kor >= Math.max(3, s.length*0.15);
+}
+/* 무료 구글 번역(비공식) — 프록시 경유로 시도, 실패하면 원문 반환 */
+async function translateToKo(text){
+  if(!text || looksKorean(text)) return text;
+  const base = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=en&tl=ko&dt=t&q="
+             + encodeURIComponent(text.slice(0, 1800));
+  for(const mk of READERS){
+    try{
+      const res = await fetch(mk(base), { signal: AbortSignal.timeout(10000) });
+      if(!res.ok) continue;
+      let body = await res.text();
+      /* allorigins(get)은 {contents:"..."} 형태 */
+      if(body.trim().startsWith('{') && body.includes('"contents"')){
+        try{ body = JSON.parse(body).contents; }catch(e){}
+      }
+      const j = JSON.parse(body);
+      const out = (j[0]||[]).map(seg => seg[0]).join('');
+      if(out && out.trim()) return out.trim();
+    }catch(e){ /* 다음 판독기 */ }
+  }
+  return text;   /* 번역 실패 시 원문 유지 */
+}
+async function translateItems(items){
+  for(const it of items){
+    try{
+      const [t, s] = await Promise.all([ translateToKo(it.title), translateToKo(it.summary) ]);
+      if(t && t !== it.title){ it.title_en = it.title; it.title = t; }
+      if(s && s !== it.summary){ it.summary = s; }
+    }catch(e){}
+  }
+  return items;
+}
+
 async function fetchCategory(key){
   const urls = FEEDS[key] || [];
   if(!urls.length) return null;
@@ -1257,6 +1481,8 @@ async function fetchCategory(key){
     seen.add(k); it.id = hashId(key, it.url || it.title); uniq.push(it);
     if(uniq.length >= FEED_MAX) break;
   }
+  /* 영문 카테고리는 한글로 번역 */
+  if(ENGLISH_CATS.has(key)) await translateItems(uniq);
   return uniq;
 }
 
@@ -1326,7 +1552,7 @@ function init(){
   /* ⚙ 도구 열고 닫기 — 폰에서는 기본 접힘 */
   const toolset = document.getElementById('toolset');
   const toolsToggle = document.getElementById('toolsToggle');
-  const isPhone = window.matchMedia('(max-width:640px)').matches;
+  const isPhone = (window.matchMedia && window.matchMedia('(max-width:640px)').matches) || window.innerWidth <= 640;
   if(isPhone) toolset.classList.add('closed');
   const syncToolBtn = () => {
     const open = !toolset.classList.contains('closed');
