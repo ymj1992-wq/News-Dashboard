@@ -35,6 +35,9 @@
   .topbar .meta b{color:#fff;}
   .badge-unread{background:#dc2626;color:#fff;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:700;}
   .tools{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+  .toolset{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+  .toolset.closed{display:none;}
+  #toolsToggle{display:none;}
   .tbtn{background:var(--btn);color:#fff;border:1px solid var(--btnline);border-radius:8px;
     padding:6px 11px;font-size:12.5px;cursor:pointer;white-space:nowrap;font-family:inherit;}
   .tbtn:hover{background:var(--btnhover);}
@@ -105,6 +108,19 @@
   .chk-wrap input{width:17px;height:17px;cursor:pointer;accent-color:#16a34a;}
   .divider-read{padding:6px 15px;font-size:10.5px;font-weight:700;color:var(--sub);
     background:var(--box);border-bottom:1px solid var(--divider);letter-spacing:.04em;}
+  /* 지역 필터 바 */
+  .geobar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;
+    padding:9px 12px;background:var(--box);border-bottom:1px solid var(--divider);}
+  .geosel{flex:1 1 auto;min-width:96px;max-width:100%;appearance:none;
+    background:var(--card);border:1px solid var(--line);border-radius:8px;
+    color:var(--ink);font-family:inherit;font-size:12px;padding:5px 26px 5px 9px;cursor:pointer;
+    background-image:linear-gradient(45deg,transparent 50%,var(--sub) 50%),linear-gradient(135deg,var(--sub) 50%,transparent 50%);
+    background-position:calc(100% - 14px) 50%,calc(100% - 9px) 50%;
+    background-size:5px 5px,5px 5px;background-repeat:no-repeat;}
+  .geosel:focus{outline:2px solid var(--accent);outline-offset:1px;}
+  .geoclear{flex:0 0 auto;background:var(--card);border:1px solid var(--line);border-radius:8px;
+    color:var(--sub);font-family:inherit;font-size:12px;padding:5px 9px;cursor:pointer;font-weight:700;}
+  .geoclear:hover{background:var(--hover);}
   .morebtn{width:100%;background:none;border:none;border-top:1px solid var(--divider);
     padding:9px;font-size:11.5px;color:var(--sub);cursor:pointer;font-family:inherit;}
   .morebtn:hover{background:var(--hover);}
@@ -205,7 +221,16 @@
     .topbar .meta{font-size:11.5px;gap:10px;}
     .wrap{padding:14px 11px 50px;}
     .grid{grid-template-columns:1fr;}
-    .list{max-height:380px;}
+    /* 폰에서는 카드 안 목록을 전부 펼쳐 페이지 스크롤과 충돌하지 않게 함 */
+    .list{max-height:none;overflow-y:visible;}
+    /* 그립을 눌러 끌 때만 반응하고, 평소 세로 스크롤은 그대로 통과 */
+    .grip{touch-action:pan-y;}
+    /* 그래프 위에서도 세로 스크롤이 되도록(가로로 훑을 때만 값 표시) */
+    .fx-plot{touch-action:pan-y;}
+    /* 폰에서는 ⚙ 도구 버튼을 보이고, 도구 묶음은 접어 화면을 아낌 */
+    #toolsToggle{display:inline-block;}
+    .toolset{width:100%;margin-top:6px;}
+    .searchbox{max-width:none;flex:1 1 60%;}
   }
   @media (prefers-reduced-motion:reduce){*{transition:none !important;}}
 </style>
@@ -222,18 +247,21 @@
     </div>
     <div class="tools">
       <div class="searchbox"><input id="q" type="search" placeholder="제목·요약 검색…" autocomplete="off"></div>
-      <select class="tbtn" id="dateSel" title="날짜별 지난 뉴스"></select>
-      <select class="tbtn" id="sortSel" title="정렬">
-        <option value="new">새 소식 우선</option>
-        <option value="date">최신 날짜순</option>
-      </select>
-      <button class="tbtn" id="unreadBtn" title="안 읽은 것만 보기">👁 안 읽은 것만</button>
-      <button class="tbtn" id="liveBtn" title="RSS에서 최신 뉴스 자동 불러오기">🔄 새로고침</button>
-      <button class="tbtn" id="dataBtn" title="새 데이터 붙여넣기">⬇ 데이터 갱신</button>
-      <button class="tbtn" id="allReadBtn" title="모두 읽음 처리">✓ 모두 읽음</button>
-      <button class="tbtn" id="resetBtn" title="읽음 표시 초기화">↺ 읽음 초기화</button>
-      <button class="tbtn" id="orderBtn" title="섹션 배치 순서를 기본값으로">⇅ 순서 초기화</button>
-      <button class="tbtn" id="themeBtn" title="밝은 화면 / 어두운 화면 전환">🌙 어둡게</button>
+      <button class="tbtn" id="toolsToggle" title="도구 열기/닫기" aria-expanded="true">⚙ 도구 ▾</button>
+      <div class="toolset" id="toolset">
+        <select class="tbtn" id="dateSel" title="날짜별 지난 뉴스"></select>
+        <select class="tbtn" id="sortSel" title="정렬">
+          <option value="new">새 소식 우선</option>
+          <option value="date">최신 날짜순</option>
+        </select>
+        <button class="tbtn" id="unreadBtn" title="안 읽은 것만 보기">👁 안 읽은 것만</button>
+        <button class="tbtn" id="liveBtn" title="RSS에서 최신 뉴스 자동 불러오기">🔄 새로고침</button>
+        <button class="tbtn" id="dataBtn" title="새 데이터 붙여넣기">⬇ 데이터 갱신</button>
+        <button class="tbtn" id="allReadBtn" title="모두 읽음 처리">✓ 모두 읽음</button>
+        <button class="tbtn" id="resetBtn" title="읽음 표시 초기화">↺ 읽음 초기화</button>
+        <button class="tbtn" id="orderBtn" title="섹션 배치 순서를 기본값으로">⇅ 순서 초기화</button>
+        <button class="tbtn" id="themeBtn" title="밝은 화면 / 어두운 화면 전환">🌙 어둡게</button>
+      </div>
     </div>
   </div>
 </div>
@@ -359,31 +387,31 @@ it: { title:"💻 IT (AI·갤럭시·애플)", color:"it", items:[
   source:"IT 전문지 종합",url:""},
 ]},
 community: { title:"🧳 한인사회 · 이민 · 동포청", color:"community", items:[
- {id:"cm1",title:"캐나다, 부모·조부모 초청 이민 신청 잠정 중단",date:"2026-07-17",
+ {id:"cm1",country:"캐나다",region:"전국",title:"캐나다, 부모·조부모 초청 이민 신청 잠정 중단",date:"2026-07-17",
   summary:"캐나다 이민부(IRCC)가 7월 17일 부모·조부모 초청(PGP) 신청 접수를 즉시 효력으로 잠정 중단한다고 발표했다. 가족 재결합 정책 기조에 상당한 변화를 뜻하는 조치로, 한국의 부모님을 모셔오려 준비하시던 이민 가정에는 직접적인 영향이 있다. 재개 시점은 아직 공지되지 않았으므로, 준비 중이신 분은 서류를 갖춰 두고 공식 발표를 주시하는 것이 좋다.",
   source:"IRCC / cic times",url:"https://ircc.com/news/ircc-updates-canada-immigration-processing-times-for-july-2026-cic-times"},
- {id:"cm2",title:"IRCC, 7월 처리기간 갱신… 임시체류 신청 대기 길어져",date:"2026-07-11",
+ {id:"cm2",country:"캐나다",region:"전국",title:"IRCC, 7월 처리기간 갱신… 임시체류 신청 대기 길어져",date:"2026-07-11",
   summary:"이민부가 7월 11일 각 비자·영주권 프로그램별 처리기간을 갱신해 발표했다. 특히 임시체류(방문·학생·취업) 신청자의 대기 시간이 전반적으로 길어진 것으로 나타났다. 방문비자로 부모님이나 친지를 초청할 계획이 있다면, 예상보다 넉넉히 시간을 두고 신청하시는 편이 안전하다.",
   source:"IRCC",url:"https://ircc.com/news/global-immigration-recap-june-2026-wr-immigration"},
- {id:"cm3",title:"재외동포청, '동포역량지원관' 신설… 협력센터 본청 통합",date:"2026-07-14",
+ {id:"cm3",country:"한국",title:"재외동포청, '동포역량지원관' 신설… 협력센터 본청 통합",date:"2026-07-14",
   summary:"재외동포청(청장 김경협)이 7월 14일 「재외동포청 직제」 및 시행규칙을 공포하고 10월 1일부터 시행한다고 밝혔다. 핵심은 산하기관인 '재외동포협력센터'를 본청으로 통합하는 것으로, 흩어져 있던 재외동포 지원 체계를 하나로 합쳐 정책 수립과 사업 집행을 연계하고 행정의 효율성과 책임성을 높이겠다는 취지다. 한인회·한글학교 지원 창구가 단일화될 가능성이 있어 지역 단체들이 주목하고 있다.",
   source:"재외동포청",url:"https://www.oka.go.kr/"},
- {id:"cm4",title:"재외동포단체 지원사업 수요조사, 8월 3일 마감",date:"2026-07-29",
+ {id:"cm4",country:"한국",title:"재외동포단체 지원사업 수요조사, 8월 3일 마감",date:"2026-07-29",
   summary:"재외동포청이 '2026년도 재외동포단체 지원사업 수요조사'를 실시하며 8월 3일까지 신청을 받는다. 2026년 8월부터 12월까지 재외공관 관할 지역에서 시행되는 동포 단체의 사업·행사가 대상이다. 신청은 재외동포 포털(www.korean.net)에서 하며, 마감 후에는 추가 신청이나 수정·보완이 불가능하다고 동포청은 강조했다. 한인 커뮤니티 행사를 준비 중인 단체라면 마감일을 놓치지 않도록 유의할 필요가 있다.",
   source:"미주 한국일보",url:"http://www.koreatimes.com/article/20260729/1623394"},
- {id:"cm5",title:"2026년 하반기, 재외동포·외국인 관련 제도 245가지 시행",date:"2026-07-01",
+ {id:"cm5",country:"한국",title:"2026년 하반기, 재외동포·외국인 관련 제도 245가지 시행",date:"2026-07-01",
   summary:"2026년 하반기부터 재외동포와 외국인의 국내 생활에 직접 영향을 미치는 총 245가지 제도가 새로 시행되거나 확대된다. 재외동포 등록과 민원 서비스 개선, 재외동포 DB 구축, 청년 국내 정착·취업 지원 프로그램 등이 주요 내용이다. 정부는 DB 구축을 계획하고 있어 등록 절차를 밟아두면 향후 지원 정보를 정기적으로 받을 수 있다. 최종 확인은 각 부처의 공식 고시를 우선해야 한다.",
   source:"전국인력신문",url:"https://www.kjob.news/news/502009"},
- {id:"cm6",title:"캐나다 한인 26만 명, 세계 4위… 서부 한인 11만 명 시대",date:"2026-01-02",
+ {id:"cm6",country:"캐나다",region:"전국",title:"캐나다 한인 26만 명, 세계 4위… 서부 한인 11만 명 시대",date:"2026-01-02",
   summary:"전 세계 재외동포 수는 줄었지만 캐나다 한인은 약 26만 명으로 세계 4위 규모를 유지하고 있다. 토론토의 성장세를 밴쿠버가 3배가량 앞지르며 서부 한인 사회가 11만 명 시대를 열었고, 유학생과 일반 체류자가 급증하며 한인 사회 전반에 활력이 돌고 있다는 분석이다. 대서양 연안 지역은 여전히 소규모지만, 전국 흐름 속에서 우리 위치를 가늠해 볼 수 있는 자료다.",
   source:"미주중앙일보",url:"https://www.koreadaily.com/article/20260102170045213"},
- {id:"cm7",title:"캐나다 한인회 총연합회 회장단, 오타와 대사관 관저 방문",date:"2026-06-28",
+ {id:"cm7",country:"캐나다",region:"온타리오",city:"오타와",title:"캐나다 한인회 총연합회 회장단, 오타와 대사관 관저 방문",date:"2026-06-28",
   summary:"캐나다 한인회 총연합회(회장 이석로) 회장단이 오타와 주캐나다 대사관 관저를 방문해 한인 사회의 '새로운 도약'을 주제로 논의했다. 총연합회는 노바스코샤·뉴브런즈윅(몽튼)을 포함한 전국 20여 개 지역 한인회를 아우르는 조직이다.",
   source:"캐나다 한인회 총연합회",url:"https://fkca.ca/"},
- {id:"cm8",title:"국내 휴대전화 없이 '재외국민 인증' 가능… 해외번호·전자여권으로 즉시 발급",date:"2026-05-11",
+ {id:"cm8",country:"한국",title:"국내 휴대전화 없이 '재외국민 인증' 가능… 해외번호·전자여권으로 즉시 발급",date:"2026-05-11",
   summary:"해외 번호와 전자여권만 있으면 즉시 인증서를 발급받을 수 있게 되어, 국세청 등 주요 공공 웹사이트 이용의 제약과 비용이 사라졌다. 한국 계좌·세무·연금 업무를 처리해야 하는 이민자에게 실질적인 도움이 되는 변화다.",
   source:"캐나다 한인회 총연합회",url:"https://fkca.ca/"},
- {id:"cm9",title:"온타리오, 기존 이민 스트림 폐지하고 'Workforce Priority Stream' 신설",date:"2026-06-26",
+ {id:"cm9",country:"캐나다",region:"온타리오",title:"온타리오, 기존 이민 스트림 폐지하고 'Workforce Priority Stream' 신설",date:"2026-06-26",
   summary:"온타리오주가 6월 26일자로 기존 OINP 8개 스트림을 모두 종료하고, 노동시장 수요에 맞춘 새로운 Workforce Priority Stream으로 전면 개편했다. 종료된 스트림으로는 더 이상 초청장이 발급되지 않는다. BC주도 별도 정원 상한을 둔 신규 등록 절차를 운영 중이어서, 주정부 이민을 준비하는 분들은 주별 규정을 새로 확인해야 한다.",
   source:"Immigration News Canada",url:"https://immigrationnewscanada.ca/new-canada-immigration-changes-july-2026/"},
 ]},
@@ -450,7 +478,7 @@ function jset(k, v){
 const state = {
   data: null, view: null, viewDate: '', archive: {},
   read: new Set(), seen: new Set(), newIds: new Set(),
-  open: {}, fxInv: {}, fxAmt: {}, showAllRead: {},
+  open: {}, fxInv: {}, fxAmt: {}, showAllRead: {}, geo: {},
   fxStatRange: '1w', fxsData: {}, fxsSrc: {}, fxsLoad: {},
   prefs: { unreadOnly:false, sort:'new', collapsed:{}, theme:'light' }
 };
@@ -524,10 +552,26 @@ function matches(it, q){
   return q.toLowerCase().split(/\s+/).filter(Boolean).every(w => s.includes(w));
 }
 
-function arrange(items){
+/* ── 지역 필터(동포뉴스 등): 항목의 country/region/city 필드 기준 ── */
+function geoOf(it){
+  return { country: it.country||'', region: it.region||'', city: it.city||'' };
+}
+function geoPass(it, key){
+  const sel = state.geo[key]; if(!sel) return true;
+  const g = geoOf(it);
+  if(sel.country && g.country !== sel.country) return false;
+  if(sel.region  && g.region  !== sel.region)  return false;
+  if(sel.city    && g.city    !== sel.city)    return false;
+  return true;
+}
+/* 이 카드가 지역 필터를 쓸 수 있는가(항목 중 하나라도 country가 있으면) */
+function hasGeo(items){ return (items||[]).some(it => it.country); }
+
+function arrange(items, key){
   const live = state.viewDate === '';
   const q = document.getElementById('q').value.trim();
   let list = items.filter(it => matches(it, q));
+  if(key) list = list.filter(it => geoPass(it, key));
   if(live && state.prefs.unreadOnly) list = list.filter(it => !state.read.has(it.id));
 
   const isRead = it => live && state.read.has(it.id);
@@ -564,13 +608,38 @@ function itemHtml(key, it, opts){
   </div>`;
 }
 
+function geoFilterHtml(key, items){
+  if(!hasGeo(items)) return '';
+  const sel = state.geo[key] || {};
+  /* 현재 상위 선택을 반영해 하위 옵션 목록을 만든다 */
+  const countries = [...new Set(items.map(i=>i.country).filter(Boolean))].sort();
+  const regions = [...new Set(items
+    .filter(i => !sel.country || i.country===sel.country)
+    .map(i=>i.region).filter(Boolean))].sort();
+  const cities = [...new Set(items
+    .filter(i => (!sel.country || i.country===sel.country) && (!sel.region || i.region===sel.region))
+    .map(i=>i.city).filter(Boolean))].sort();
+  const opt = (list, cur, label) =>
+    `<option value="">${label}</option>` +
+    list.map(v => `<option value="${esc(v)}" ${v===cur?'selected':''}>${esc(v)}</option>`).join('');
+  const active = sel.country || sel.region || sel.city;
+  return `<div class="geobar">
+    <select class="geosel" data-geo="${key}" data-lvl="country">${opt(countries, sel.country||'', '🌐 전체 나라')}</select>
+    ${regions.length?`<select class="geosel" data-geo="${key}" data-lvl="region">${opt(regions, sel.region||'', '주/도 전체')}</select>`:''}
+    ${cities.length?`<select class="geosel" data-geo="${key}" data-lvl="city">${opt(cities, sel.city||'', '도시 전체')}</select>`:''}
+    ${active?`<button class="geoclear" data-geoclear="${key}" title="지역 필터 해제">✕</button>`:''}
+  </div>`;
+}
+
 function cardHtml(key, cat){
-  const { unread, read, isRead, isNew } = arrange(cat.items||[]);
+  const { unread, read, isRead, isNew } = arrange(cat.items||[], key);
   const collapsed = state.prefs.collapsed[key];
   const showAll = state.showAllRead[key];
   const readShown = showAll ? read : read.slice(0, READ_VISIBLE);
   const hidden = read.length - readShown.length;
   const opts = { isRead, isNew };
+
+  const geo = geoFilterHtml(key, cat.items||[]);
 
   let body = '';
   if(!unread.length && !readShown.length){
@@ -586,10 +655,10 @@ function cardHtml(key, cat){
 
   return `<div class="card cat-${cat.color} ${collapsed?'collapsed':''}" data-key="${key}">
     <h2 data-toggle="${key}"><span class="htitle">
-        <button class="grip" data-grip="${key}" title="끌어서 위치 이동 (방향키로도 이동)">⠿</button>
+        <button class="grip" data-grip="${key}" title="끌어서 위치 이동 (폰은 길게 눌러서, 키보드는 방향키)">⠿</button>
         <span class="caret">▼</span>${esc(cat.title)}</span>
       <span class="cnt">${unread.length}건 미확인</span></h2>
-    <div class="cardbody"><div class="list">${body}</div>${more}</div>
+    <div class="cardbody">${geo}<div class="list">${body}</div>${more}</div>
   </div>`;
 }
 
@@ -835,7 +904,7 @@ function fxHtml(){
   }).join('');
   return `<div class="card cat-fx" data-key="fx">
     <h2 data-toggle="fx"><span class="htitle">
-        <button class="grip" data-grip="fx" title="끌어서 위치 이동 (방향키로도 이동)">⠿</button>
+        <button class="grip" data-grip="fx" title="끌어서 위치 이동 (폰은 길게 눌러서, 키보드는 방향키)">⠿</button>
         <span class="caret">▼</span>💱 환율</span>
       <span class="cnt">양방향 · 계산기</span></h2>
     <div class="cardbody"><div class="fx-grid">${rows}</div>
@@ -948,7 +1017,32 @@ function bind(){
   const grid = document.getElementById('grid');
   grid.querySelectorAll('[data-grip]').forEach(el => {
     el.onclick = e => e.stopPropagation();
-    el.onpointerdown = e => { e.stopPropagation(); if(e.button===0||e.pointerType!=='mouse') dragStart(e, el.dataset.grip); };
+    el.onpointerdown = e => {
+      e.stopPropagation();
+      if(e.pointerType === 'mouse'){
+        if(e.button === 0) dragStart(e, el.dataset.grip);
+        return;
+      }
+      /* 터치·펜: 길게 눌러야(0.4초) 드래그 시작 → 그 전까지는 페이지 스크롤 가능 */
+      const sx = e.clientX, sy = e.clientY;
+      let holdTimer = setTimeout(() => {
+        holdTimer = null;
+        try{ navigator.vibrate && navigator.vibrate(15); }catch(_){}
+        dragStart(e, el.dataset.grip);
+      }, 400);
+      const cancel = ev => {
+        if(ev && ev.type === 'pointermove'){
+          if(Math.abs(ev.clientX - sx) < 8 && Math.abs(ev.clientY - sy) < 8) return;
+        }
+        if(holdTimer){ clearTimeout(holdTimer); holdTimer = null; }
+        el.removeEventListener('pointermove', cancel);
+        el.removeEventListener('pointerup', cancel);
+        el.removeEventListener('pointercancel', cancel);
+      };
+      el.addEventListener('pointermove', cancel);
+      el.addEventListener('pointerup', cancel);
+      el.addEventListener('pointercancel', cancel);
+    };
     el.onkeydown = e => {
       const step = (e.key==='ArrowLeft'||e.key==='ArrowUp') ? -1
                  : (e.key==='ArrowRight'||e.key==='ArrowDown') ? 1 : 0;
@@ -974,6 +1068,22 @@ function bind(){
   });
   grid.querySelectorAll('[data-more]').forEach(el => el.onclick = () => {
     const k = el.dataset.more; state.showAllRead[k] = !state.showAllRead[k]; render();
+  });
+
+  /* 지역 필터 드롭다운 */
+  grid.querySelectorAll('[data-geo]').forEach(el => el.onchange = e => {
+    e.stopPropagation();
+    const k = el.dataset.geo, lvl = el.dataset.lvl, v = el.value;
+    const g = Object.assign({}, state.geo[k]);
+    g[lvl] = v;
+    /* 상위가 바뀌면 하위 선택 초기화 */
+    if(lvl === 'country'){ g.region=''; g.city=''; }
+    if(lvl === 'region'){ g.city=''; }
+    state.geo[k] = g; render();
+  });
+  grid.querySelectorAll('[data-geoclear]').forEach(el => el.onclick = e => {
+    e.stopPropagation();
+    state.geo[el.dataset.geoclear] = {}; render();
   });
   grid.querySelectorAll('[data-swap]').forEach(el => el.onclick = () => {
     const k = el.dataset.swap; state.fxInv[k] = !state.fxInv[k]; render();
@@ -1212,6 +1322,19 @@ function init(){
   bootData(); fillDates(); render();
 
   document.getElementById('q').oninput = render;
+
+  /* ⚙ 도구 열고 닫기 — 폰에서는 기본 접힘 */
+  const toolset = document.getElementById('toolset');
+  const toolsToggle = document.getElementById('toolsToggle');
+  const isPhone = window.matchMedia('(max-width:640px)').matches;
+  if(isPhone) toolset.classList.add('closed');
+  const syncToolBtn = () => {
+    const open = !toolset.classList.contains('closed');
+    toolsToggle.textContent = open ? '⚙ 도구 ▴' : '⚙ 도구 ▾';
+    toolsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  syncToolBtn();
+  toolsToggle.onclick = () => { toolset.classList.toggle('closed'); syncToolBtn(); };
   document.getElementById('sortSel').value = state.prefs.sort;
   document.getElementById('sortSel').onchange = e => { state.prefs.sort = e.target.value; jset(K.prefs,state.prefs); render(); };
   document.getElementById('unreadBtn').onclick = () => { state.prefs.unreadOnly = !state.prefs.unreadOnly; jset(K.prefs,state.prefs); render(); };
