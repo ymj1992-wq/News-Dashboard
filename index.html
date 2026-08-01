@@ -38,9 +38,17 @@
     padding:12px 20px;box-shadow:0 2px 10px rgba(0,0,0,.2);}
   .topline{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 18px;}
   .dateblock{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0;}
+  .bigdate-row{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;}
   .bigdate{font-family:"Nanum Myeongjo","Batangche","Batang",serif;
     font-size:clamp(24px,4vw,38px);font-weight:800;line-height:1.15;color:#fff;
     letter-spacing:-.01em;white-space:nowrap;}
+  .clockwrap{display:inline-flex;align-items:baseline;}
+  .clock-time{font-family:"Consolas","DSEG7 Classic","Courier New",monospace;
+    font-size:clamp(16px,2.6vw,24px);font-weight:700;color:#facc15;
+    letter-spacing:1px;font-variant-numeric:tabular-nums;
+    text-shadow:0 0 6px rgba(250,204,21,.45);white-space:nowrap;}
+  .clock-colon{animation:clockBlink 1s steps(1,end) infinite;}
+  @keyframes clockBlink{50%{opacity:.15;}}
   .subline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
   .pubdate{font-size:11px;color:var(--topsub);white-space:nowrap;}
   .pubdate b{color:#e5e7eb;font-weight:700;}
@@ -283,14 +291,17 @@
 
 <div class="topbar">
   <div class="topline">
+    <h1 class="brand">📰 뉴스 대시보드</h1>
     <div class="dateblock">
-      <div class="bigdate" id="bigDate">-</div>
+      <div class="bigdate-row">
+        <span class="bigdate" id="bigDate">-</span>
+        <span class="clockwrap"><span class="clock-time" id="clockTime">--:--:--</span></span>
+      </div>
       <div class="subline">
         <span class="pubdate">발행 <b id="updatedAt">-</b></span>
         <span id="liveStat" class="livestat"></span>
       </div>
     </div>
-    <h1 class="brand">📰 뉴스 대시보드</h1>
     <div class="meta">
       <span>미확인 <span class="badge-unread" id="totalUnread">0</span></span>
     </div>
@@ -1329,22 +1340,46 @@ function dragEnd(){
 }
 
 /* ---- 전체 렌더 ------------------------------------------------------ */
-/* 상단의 큰 명조체 오늘 날짜 */
+/* 상단의 큰 명조체 오늘 날짜 — 요일은 괄호로 표시 */
 function renderBigDate(){
   const el = document.getElementById('bigDate');
   if(!el) return;
   try{
-    const s = new Intl.DateTimeFormat('ko-KR',{timeZone:'America/Halifax',month:'long',day:'numeric',weekday:'long'}).format(new Date());
-    el.textContent = s;
+    const parts = new Intl.DateTimeFormat('ko-KR',
+      {timeZone:'America/Halifax',month:'long',day:'numeric',weekday:'long'}).formatToParts(new Date());
+    const get = t => (parts.find(p=>p.type===t)||{}).value || '';
+    const month = get('month'), day = get('day'), weekday = get('weekday');
+    el.textContent = weekday ? `${month} ${day}일 (${weekday})` : `${month} ${day}일`;
   }catch(e){
     el.textContent = todayYmd();
   }
 }
 
+/* 요일 옆 디지털 시계(초 깜빡임) — 1초마다 갱신 */
+function renderClock(){
+  const el = document.getElementById('clockTime');
+  if(!el) return;
+  let h, m, s;
+  try{
+    const parts = new Intl.DateTimeFormat('en-GB',
+      {timeZone:'America/Halifax',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).formatToParts(new Date());
+    const get = t => (parts.find(p=>p.type===t)||{}).value || '00';
+    h = get('hour'); m = get('minute'); s = get('second');
+  }catch(e){
+    const d = new Date();
+    h = String(d.getHours()).padStart(2,'0');
+    m = String(d.getMinutes()).padStart(2,'0');
+    s = String(d.getSeconds()).padStart(2,'0');
+  }
+  el.innerHTML = `${h}<span class="clock-colon">:</span>${m}<span class="clock-colon">:</span>${s}`;
+}
+setInterval(renderClock, 1000);
+
 function render(){
   const d = state.view;
   document.getElementById('updatedAt').textContent = fmtStamp(d.updatedAt);
   renderBigDate();
+  renderClock();
 
   let unreadTotal = 0;
   if(state.viewDate === '')
