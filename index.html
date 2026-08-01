@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Myeongjo:wght@700;800&display=swap" rel="stylesheet">
 <title>뉴스 대시보드</title>
 <style>
   :root{
@@ -30,12 +36,22 @@
   /* ---------- 상단바 ---------- */
   .topbar{position:sticky;top:0;z-index:30;background:var(--topbar);color:#fff;
     padding:12px 20px;box-shadow:0 2px 10px rgba(0,0,0,.2);}
-  .topline{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;}
-  .topbar h1{font-size:17px;margin:0;display:flex;align-items:center;gap:8px;white-space:nowrap;}
-  .topbar .meta{font-size:12.5px;color:var(--topsub);display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
+  .topline{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px 18px;}
+  .dateblock{display:flex;flex-direction:column;justify-content:center;gap:2px;min-width:0;}
+  .bigdate{font-family:"Nanum Myeongjo","Batangche","Batang",serif;
+    font-size:clamp(24px,4vw,38px);font-weight:800;line-height:1.15;color:#fff;
+    letter-spacing:-.01em;white-space:nowrap;}
+  .subline{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+  .pubdate{font-size:11px;color:var(--topsub);white-space:nowrap;}
+  .pubdate b{color:#e5e7eb;font-weight:700;}
+  .livestat{font-size:11px;color:#9ca3af;}
+  .topbar h1.brand{font-size:14.5px;margin:0;display:flex;align-items:center;gap:6px;
+    white-space:nowrap;color:#cbd5e1;font-weight:700;opacity:.9;}
+  .topbar .meta{font-size:12.5px;color:var(--topsub);display:flex;gap:14px;flex-wrap:wrap;align-items:center;
+    margin-left:auto;}
   .topbar .meta b{color:#fff;}
   .badge-unread{background:#dc2626;color:#fff;border-radius:999px;padding:2px 9px;font-size:11.5px;font-weight:700;}
-  .tools{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
+  .tools{display:flex;gap:7px;flex-wrap:wrap;align-items:center;width:100%;}
   .geo-tools{display:flex;gap:7px;flex-wrap:wrap;align-items:center;}
   .geo-grp{display:inline-flex;gap:5px;align-items:center;background:rgba(255,255,255,.06);
     border:1px solid var(--btnline);border-radius:9px;padding:3px 6px;}
@@ -241,7 +257,9 @@
 
   @media (max-width:640px){
     .topbar{padding:10px 14px;}
-    .topbar .meta{font-size:11.5px;gap:10px;}
+    .topbar .meta{font-size:11.5px;gap:10px;margin-left:0;}
+    .bigdate{font-size:clamp(20px,7vw,28px);}
+    .topbar h1.brand{font-size:12.5px;}
     .wrap{padding:14px 11px 50px;}
     .grid{grid-template-columns:1fr;}
     /* 폰에서는 카드 안 목록을 전부 펼쳐 페이지 스크롤과 충돌하지 않게 함 */
@@ -265,10 +283,15 @@
 
 <div class="topbar">
   <div class="topline">
-    <h1>📰 뉴스 대시보드</h1>
+    <div class="dateblock">
+      <div class="bigdate" id="bigDate">-</div>
+      <div class="subline">
+        <span class="pubdate">발행 <b id="updatedAt">-</b></span>
+        <span id="liveStat" class="livestat"></span>
+      </div>
+    </div>
+    <h1 class="brand">📰 뉴스 대시보드</h1>
     <div class="meta">
-      <span>발행 <b id="updatedAt">-</b></span>
-      <span id="liveStat" style="color:#9ca3af;"></span>
       <span>미확인 <span class="badge-unread" id="totalUnread">0</span></span>
     </div>
     <div class="tools">
@@ -1306,9 +1329,22 @@ function dragEnd(){
 }
 
 /* ---- 전체 렌더 ------------------------------------------------------ */
+/* 상단의 큰 명조체 오늘 날짜 */
+function renderBigDate(){
+  const el = document.getElementById('bigDate');
+  if(!el) return;
+  try{
+    const s = new Intl.DateTimeFormat('ko-KR',{timeZone:'America/Halifax',month:'long',day:'numeric',weekday:'long'}).format(new Date());
+    el.textContent = s;
+  }catch(e){
+    el.textContent = todayYmd();
+  }
+}
+
 function render(){
   const d = state.view;
   document.getElementById('updatedAt').textContent = fmtStamp(d.updatedAt);
+  renderBigDate();
 
   let unreadTotal = 0;
   if(state.viewDate === '')
@@ -1657,9 +1693,9 @@ async function fetchCategory(key){
   return uniq;
 }
 
-/* 전체 새로고침 */
+/* 전체 새로고침. silent=true면 실패해도 alert 없이 조용히 끝난다(자동 스케줄용) */
 let liveBusy = false;
-async function liveRefresh(){
+async function liveRefresh(silent){
   if(liveBusy) return;
   if(state.viewDate){ /* 보관본 보는 중이면 오늘로 */
     state.viewDate=''; state.view=state.data;
@@ -1668,8 +1704,8 @@ async function liveRefresh(){
   liveBusy = true;
   const btn = document.getElementById('liveBtn');
   const stat = document.getElementById('liveStat');
-  btn.textContent = '⏳ 불러오는 중…'; btn.disabled = true;
-  stat.textContent = '';
+  if(!silent){ btn.textContent = '⏳ 불러오는 중…'; btn.disabled = true; }
+  else { stat.textContent = '🔄 자동 갱신 중…'; }
 
   const keys = Object.keys(FEEDS).filter(k => (FEEDS[k]||[]).length);
   const results = await Promise.allSettled(keys.map(k => fetchCategory(k)));
@@ -1695,9 +1731,10 @@ async function liveRefresh(){
   });
 
   if(okCount === 0){
-    btn.textContent = '🔄 새로고침'; btn.disabled = false; liveBusy = false;
+    if(!silent){ btn.textContent = '🔄 새로고침'; btn.disabled = false; }
+    liveBusy = false;
     stat.textContent = '';
-    alert('자동 새로고침에 실패했습니다.\n\n' +
+    if(!silent) alert('자동 새로고침에 실패했습니다.\n\n' +
       '· 인터넷 연결을 확인해 주세요.\n' +
       '· 컴퓨터·폰에 저장된 파일(file://)로 열면 보안상 막힐 수 있습니다.\n' +
       '  이때는 대시보드를 웹주소(https://…)에 올려두면 새로고침이 작동합니다.\n' +
@@ -1711,7 +1748,8 @@ async function liveRefresh(){
   ingest(fresh);              /* 저장 + 새 항목 계산 + 새로고침 */
 
   /* ingest가 reload하므로 아래는 실행되지 않지만, reload 실패 대비 */
-  btn.textContent = '🔄 새로고침'; btn.disabled = false; liveBusy = false;
+  if(!silent){ btn.textContent = '🔄 새로고침'; btn.disabled = false; }
+  liveBusy = false;
   if(failNames.length) stat.textContent = '(' + failNames.join('·') + ' 제외)';
 }
 
@@ -1762,7 +1800,7 @@ function init(){
   };
 
   /* 데이터 갱신 모달 */
-  document.getElementById('liveBtn').onclick = liveRefresh;
+  document.getElementById('liveBtn').onclick = () => liveRefresh(false);
   document.getElementById('trBtn').onclick = translateCurrentView;
   const modal = document.getElementById('modal'), msg = document.getElementById('dataMsg');
   const closeModal = () => { modal.classList.remove('open'); document.body.style.overflow=''; };
@@ -1799,6 +1837,76 @@ function init(){
   };
 }
 init();
+
+/* ── 날짜가 바뀌면 자동으로 새로고침 ──
+   홈 화면 아이콘이나 브라우저가 어제 화면을 그대로 보여주는 경우(캐시·백그라운드 복귀)에
+   대비해, 화면이 다시 보이거나 포커스를 받을 때마다 실제 오늘 날짜를 확인하고,
+   페이지를 열었을 때와 날짜가 달라졌으면 최신 내용을 받아오도록 새로고침한다. */
+(function(){
+  let seenYmd = todayYmd();
+  function checkDateAndReload(){
+    const now = todayYmd();
+    if(now !== seenYmd){
+      seenYmd = now;
+      try{ location.reload(); }catch(e){}
+    }
+  }
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible') checkDateAndReload();
+  });
+  window.addEventListener('pageshow', (e) => {
+    if(e.persisted) checkDateAndReload();   /* 브라우저 뒤로가기 캐시(bfcache)에서 복귀한 경우 */
+  });
+  window.addEventListener('focus', checkDateAndReload);
+  setInterval(checkDateAndReload, 30*60*1000);   /* 화면을 계속 켜 두는 경우 대비, 30분마다 확인 */
+})();
+
+/* ── 하루 세 번(오전 7시·오후 1시·오후 6시) 뉴스 자동 갱신 ──
+   정적 웹페이지라 화면이 완전히 꺼져 있을 때는 실행될 수 없다.
+   대신 화면이 열려 있거나 다시 켜질 때마다 "오늘 이 시각대가 이미 지나갔는데
+   아직 자동 갱신을 안 했다"를 확인해서, 그렇다면 조용히 새로고침한다.
+   화면을 하루 중 한 번이라도 열어 보시면 그 시점까지 지난 시각대는 자동으로 채워진다. */
+(function(){
+  const SLOTS = [7, 13, 18];             /* 시(hour), Halifax 기준 */
+  const K_SLOT = 'nd_auto_slot';         /* 마지막으로 자동 갱신한 "YYYY-MM-DD#슬롯인덱스" */
+
+  function nowHalifax(){
+    try{
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone:'America/Halifax', year:'numeric', month:'2-digit', day:'2-digit',
+        hour:'2-digit', minute:'2-digit', hour12:false
+      }).formatToParts(new Date());
+      const g = t => parts.find(p=>p.type===t).value;
+      return { ymd: `${g('year')}-${g('month')}-${g('day')}`, hour: +g('hour'), min: +g('minute') };
+    }catch(e){
+      const d = new Date();
+      return { ymd: d.toISOString().slice(0,10), hour: d.getHours(), min: d.getMinutes() };
+    }
+  }
+  /* 지금까지 지난 슬롯 중 가장 마지막 것의 인덱스(-1이면 아직 하나도 안 지남) */
+  function lastPassedSlotIndex(hour, min){
+    let idx = -1;
+    for(let i=0;i<SLOTS.length;i++){ if(hour > SLOTS[i] || (hour===SLOTS[i] && min>=0)) idx = i; }
+    return idx;
+  }
+  function checkScheduledRefresh(){
+    if(liveBusy) return;
+    const { ymd, hour, min } = nowHalifax();
+    const idx = lastPassedSlotIndex(hour, min);
+    if(idx < 0) return;                              /* 오늘 첫 시각대(7시) 전이면 아무 것도 안 함 */
+    const marker = ymd + '#' + idx;
+    if(jget(K_SLOT, '') === marker) return;           /* 이 시각대는 이미 갱신함 */
+    jset(K_SLOT, marker);
+    liveRefresh(true);                                 /* 조용히(알림 없이) 자동 갱신 */
+  }
+  /* 페이지를 열 때, 화면이 다시 보일 때, 포커스를 받을 때, 그리고 15분마다 확인 */
+  setTimeout(checkScheduledRefresh, 3000);   /* 첫 로딩이 끝난 뒤 잠시 있다가 확인 */
+  document.addEventListener('visibilitychange', () => {
+    if(document.visibilityState === 'visible') checkScheduledRefresh();
+  });
+  window.addEventListener('focus', checkScheduledRefresh);
+  setInterval(checkScheduledRefresh, 15*60*1000);
+})();
 </script>
 </body>
 </html>
