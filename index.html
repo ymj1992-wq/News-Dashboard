@@ -631,11 +631,17 @@ function pruneArchive(){          /* 최근 30개 날짜만 보관 */
 }
 
 /* 새 데이터 반영 */
-function ingest(raw){
+function ingest(raw, silent){
   if(!raw || !raw.news || !raw.updatedAt) throw new Error('updatedAt과 news 항목이 있어야 합니다.');
   state.archive[dayOf(state.data.updatedAt)] = state.data;   /* 지금 것을 보관함으로 */
   pruneArchive(); jset(K.arch, state.archive);
   jset(K.data, raw); jset(K.stamp, '');                       /* stamp 비워 새 항목 재계산 */
+  if(silent){
+    /* 자동 갱신: 페이지를 새로고침하지 않고 그 자리에서 다시 그린다 */
+    bootData(); fillDates(); render();
+    setTimeout(autoTranslatePending, 800);
+    return;
+  }
   try{ location.reload(); }catch(e){}
   /* reload가 막힌 환경(아티팩트)에서는 직접 재적재 */
   setTimeout(()=>{ if(document.getElementById('grid')){ bootData(); fillDates(); render(); } }, 60);
@@ -1637,12 +1643,18 @@ function trSet(s, out){
   c[s] = out; jset('nd_tr', c);
 }
 
+/* 번역 서비스가 막혀 있으면 계속 재시도해 봐야 시간만 버린다.
+   연속으로 여러 번 실패하면 이번 세션에서는 번역 시도를 멈춘다. */
+let trFailStreak = 0;
+let trDisabled = false;
+
 /* 무료 구글 번역(비공식) — 프록시 경유로 시도, 실패하면 원문 반환 */
 async function translateToKo(text){
   if(!text || looksKorean(text)) return text;
   const cached = trGet(text);
   if(cached) return cached;
-  const q = text.slice(0, 1500);
+  if(trDisabled) return text;
+  const q = text.slice(0, 1200);
   const endpoints = [
     "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=ko&dt=t&q=" + encodeURIComponent(q),
     "https://clients5.google.com/translate_a/t?client=dict-chrome-ex&sl=auto&tl=ko&q=" + encodeURIComponent(q)
@@ -1650,7 +1662,7 @@ async function translateToKo(text){
   for(const base of endpoints){
     for(const mk of TR_READERS){
       try{
-        const res = await fetch(mk(base), { signal: AbortSignal.timeout(12000) });
+        const res = await fetch(mk(base), { signal: AbortSignal.timeout(6000) });
         if(!res.ok) continue;
         let body = (await res.text()).trim();
         if(body.startsWith('{') && body.includes('"contents"')){
@@ -1664,10 +1676,11 @@ async function translateToKo(text){
           out = j[0];
         }
         out = (out || '').trim();
-        if(out && out !== text){ trSet(text, out); return out; }
+        if(out && out !== text){ trSet(text, out); trFailStreak = 0; return out; }
       }catch(e){ /* 다음 시도 */ }
     }
   }
+  if(++trFailStreak >= 6) trDisabled = true;   /* 계속 실패하면 번역 중단 */
   return text;   /* 번역 실패 시 원문 유지 */
 }
 async function translateItems(items){
@@ -1684,6 +1697,35 @@ async function translateItems(items){
 
 /* 화면에 이미 올라온 영문 항목을 그 자리에서 번역 (새로고침 없이) */
 let trBusy = false;
+/* 화면이 뜬 뒤, 아직 번역되지 않은 영문 항목을 배경에서 조금씩 번역한다.
+   뉴스 표시를 절대 막지 않고, 번역이 되는 대로 화면을 갱신한다. */
+let autoTrRunning = false;
+async function autoTranslatePending(){
+  if(autoTrRunning || trDisabled) return;
+  autoTrRunning = true;
+  try{
+    let done = 0, touched = false;
+    for(const key of Object.keys(state.data.news || {})){
+      if(!ENGLISH_CATS.has(key)) continue;
+      for(const it of (state.data.news[key].items || [])){
+        if(trDisabled) break;
+        if(!it.title || looksKorean(it.title)) continue;
+        const before = it.title;
+        const t = await translateToKo(it.title);
+        if(t && t !== before){ it.title_en = before; it.title = t; touched = true; }
+        if(it.summary && !looksKorean(it.summary)){
+          const s = await translateToKo(it.summary);
+          if(s && s !== it.summary){ it.summary_en = it.summary; it.summary = s; touched = true; }
+        }
+        if(++done % 3 === 0 && touched){ render(); jset(K.data, state.data); }
+      }
+      if(trDisabled) break;
+    }
+    if(touched){ render(); jset(K.data, state.data); }
+  }catch(e){}
+  autoTrRunning = false;
+}
+
 async function translateCurrentView(){
   if(trBusy) return;
   trBusy = true;
@@ -1723,8 +1765,8 @@ async function fetchCategory(key){
     seen.add(k); it.id = hashId(key, it.url || it.title); uniq.push(it);
     if(uniq.length >= FEED_MAX) break;
   }
-  /* 영문 카테고리는 한글로 번역 */
-  if(ENGLISH_CATS.has(key)) await translateItems(uniq);
+  /* 번역은 여기서 기다리지 않는다. 뉴스를 먼저 화면에 올리고,
+     번역은 나중에 배경에서 조금씩 처리한다(아래 autoTranslatePending). */
   return uniq;
 }
 
@@ -1780,9 +1822,9 @@ async function liveRefresh(silent){
   fresh.updatedAt = new Date().toISOString();
   fresh.fx = state.data.fx;   /* 환율은 RSS 대상이 아니므로 기존 유지 */
   try{ localStorage.setItem('nd_livecache', JSON.stringify(fresh)); }catch(e){}
-  ingest(fresh);              /* 저장 + 새 항목 계산 + 새로고침 */
+  ingest(fresh, silent);      /* 저장 + 새 항목 계산 (자동 갱신은 새로고침 없이) */
 
-  /* ingest가 reload하므로 아래는 실행되지 않지만, reload 실패 대비 */
+  if(silent){ stat.textContent = ''; }
   if(!silent){ btn.textContent = '🔄 새로고침'; btn.disabled = false; }
   liveBusy = false;
   if(failNames.length) stat.textContent = '(' + failNames.join('·') + ' 제외)';
@@ -1791,6 +1833,7 @@ async function liveRefresh(silent){
 function init(){
   bootData(); fillDates(); render();
   loadDevotions();          /* 오늘의 묵상 자동 수집 */
+  setTimeout(autoTranslatePending, 1500);   /* 영문 항목 배경 번역 */
 
   document.getElementById('q').oninput = render;
 
