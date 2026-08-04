@@ -318,6 +318,7 @@
         <button class="tbtn" id="unreadBtn" title="안 읽은 것만 보기">👁 안 읽은 것만</button>
         <button class="tbtn" id="liveBtn" title="RSS에서 최신 뉴스 자동 불러오기">🔄 새로고침</button>
         <button class="tbtn" id="trBtn" title="화면의 영문 제목·요약을 한글로 번역">🈯 영문 번역</button>
+        <button class="tbtn" id="diagBtn" title="어느 중계 서버가 살아있는지 점검">🔧 연결 진단</button>
         <button class="tbtn" id="dataBtn" title="새 데이터 붙여넣기">⬇ 데이터 갱신</button>
         <button class="tbtn" id="allReadBtn" title="모두 읽음 처리">✓ 모두 읽음</button>
         <button class="tbtn" id="resetBtn" title="읽음 표시 초기화">↺ 읽음 초기화</button>
@@ -1549,11 +1550,18 @@ const FEEDS = {
 const FEED_MAX = 10;
 
 /* CORS 우회 판독기들 — 순서대로 시도, 되는 것을 사용 */
+/* 뉴스 판독기(프록시) — 앞에서부터 차례로 시도하고, 되는 것을 쓴다.
+   무료 프록시는 수시로 막히므로 여러 곳을 준비해 둔다. */
 const READERS = [
-  u => "https://api.rss2json.com/v1/api.json?count=15&rss_url=" + encodeURIComponent(u),
+  u => "https://api.codetabs.com/v1/proxy/?quest=" + encodeURIComponent(u),
+  u => "https://api.allorigins.win/raw?url=" + encodeURIComponent(u),
   u => "https://api.allorigins.win/get?url=" + encodeURIComponent(u),
   u => "https://corsproxy.io/?url=" + encodeURIComponent(u),
+  u => "https://thingproxy.freeboard.io/fetch/" + u,
+  u => "https://api.rss2json.com/v1/api.json?count=15&rss_url=" + encodeURIComponent(u),
+  u => u,
 ];
+const READER_NAMES = ['codetabs','allorigins(raw)','allorigins(get)','corsproxy','thingproxy','rss2json','직접'];
 
 function stripHtml(s){
   const d = document.createElement('div'); d.innerHTML = s || '';
@@ -1572,23 +1580,34 @@ function hashId(prefix, s){
 }
 
 /* 한 판독기 응답을 표준 항목 배열로 */
-function parseFeed(readerIndex, payload, feedUrl){
+/* 응답 형식을 스스로 판별해 파싱한다(판독기 순서에 의존하지 않음) */
+function parseFeed(payload, feedUrl){
   const items = [];
-  if(readerIndex === 0){                       /* rss2json: JSON */
-    const j = typeof payload === 'string' ? JSON.parse(payload) : payload;
-    if(j.status !== 'ok' || !Array.isArray(j.items)) throw new Error('rss2json fail');
-    for(const it of j.items) items.push({
-      title: stripHtml(it.title), date: isoDate(it.pubDate),
-      summary: clip(it.description || it.content, 320),
-      url: it.link || '', source: (j.feed && j.feed.title) || hostOf(feedUrl) });
-    return items;
+  let text = (payload || '').trim();
+
+  /* JSON으로 감싸 온 경우 처리 */
+  if(text.startsWith('{')){
+    let j = null;
+    try{ j = JSON.parse(text); }catch(e){}
+    if(j){
+      /* rss2json 형식 */
+      if(Array.isArray(j.items)){
+        if(j.status && j.status !== 'ok') throw new Error('rss2json: ' + (j.message||j.status));
+        for(const it of j.items) items.push({
+          title: stripHtml(it.title), date: isoDate(it.pubDate),
+          summary: clip(it.description || it.content, 320),
+          url: it.link || '', source: (j.feed && j.feed.title) || hostOf(feedUrl) });
+        if(items.length) return items;
+      }
+      /* allorigins get 형식 {contents:"<xml>"} */
+      if(typeof j.contents === 'string') text = j.contents.trim();
+    }
   }
-  /* allorigins.get: {contents}, corsproxy: raw text → XML 파싱 */
-  let xml = payload;
-  if(readerIndex === 1){ const j = typeof payload==='string'?JSON.parse(payload):payload; xml = j.contents || ''; }
-  const doc = new DOMParser().parseFromString(xml, 'text/xml');
-  if(doc.querySelector('parsererror')) throw new Error('xml parse error');
+
+  const doc = new DOMParser().parseFromString(text, 'text/xml');
+  if(doc.querySelector('parsererror')) throw new Error('XML 해석 실패');
   const nodes = doc.querySelectorAll('item, entry');
+  if(!nodes.length) throw new Error('항목 없음');
   nodes.forEach(n => {
     const g = sel => { const e = n.querySelector(sel); return e ? e.textContent : ''; };
     let link = g('link');
@@ -1602,20 +1621,29 @@ function parseFeed(readerIndex, payload, feedUrl){
   return items;
 }
 
+/* 어느 판독기가 되는지 한 번 찾으면 그 뒤로는 그것부터 쓴다 */
+let goodReader = -1;
+
 /* 한 피드 가져오기: 판독기들을 차례로 시도 */
 async function fetchFeed(feedUrl){
-  let lastErr;
-  for(let i=0;i<READERS.length;i++){
+  const order = [];
+  if(goodReader >= 0) order.push(goodReader);
+  for(let i=0;i<READERS.length;i++) if(i !== goodReader) order.push(i);
+
+  const errs = [];
+  for(const i of order){
     try{
-      const res = await fetch(READERS[i](feedUrl), { signal: AbortSignal.timeout(15000) });
+      const res = await fetch(READERS[i](feedUrl), { signal: AbortSignal.timeout(12000) });
       if(!res.ok) throw new Error('HTTP ' + res.status);
-      const body = (i === 2) ? await res.text() : await res.text();
-      const items = parseFeed(i, body, feedUrl);
-      if(items.length) return items;
+      const body = await res.text();
+      const items = parseFeed(body, feedUrl);
+      if(items.length){ goodReader = i; return items; }
       throw new Error('빈 결과');
-    }catch(e){ lastErr = e; }
+    }catch(e){ errs.push(READER_NAMES[i] + ': ' + (e.message||e)); }
   }
-  throw lastErr || new Error('실패');
+  const err = new Error(errs.join(' / '));
+  err.detail = errs;
+  throw err;
 }
 
 /* 카테고리 하나 채우기 */
@@ -1770,6 +1798,33 @@ async function fetchCategory(key){
   return uniq;
 }
 
+/* 어느 중계 서버(프록시)가 살아있는지 하나씩 점검해 결과를 보여준다 */
+async function runDiagnostics(){
+  const btn = document.getElementById('diagBtn');
+  btn.textContent = '⏳ 점검 중…'; btn.disabled = true;
+  const testUrl = "https://www.cbc.ca/webfeed/rss/rss-canada-newbrunswick";
+  const lines = [];
+  for(let i=0;i<READERS.length;i++){
+    let line = READER_NAMES[i] + ' → ';
+    try{
+      const t0 = Date.now();
+      const res = await fetch(READERS[i](testUrl), { signal: AbortSignal.timeout(12000) });
+      if(!res.ok){ line += 'HTTP ' + res.status; }
+      else{
+        const body = await res.text();
+        try{
+          const items = parseFeed(body, testUrl);
+          line += items.length ? ('정상 (' + items.length + '건, ' + (Date.now()-t0) + 'ms)') : '빈 결과';
+        }catch(e){ line += '응답은 왔으나 해석 실패: ' + (e.message||e); }
+      }
+    }catch(e){ line += '연결 실패 (' + (e.name||'') + ')'; }
+    lines.push(line);
+  }
+  btn.textContent = '🔧 연결 진단'; btn.disabled = false;
+  alert('중계 서버 점검 결과\n\n' + lines.join('\n') +
+        '\n\n하나라도 "정상"이면 새로고침이 작동합니다.\n모두 실패면 잠시 뒤 다시 시도해 주세요.');
+}
+
 /* 전체 새로고침. silent=true면 실패해도 alert 없이 조용히 끝난다(자동 스케줄용) */
 let liveBusy = false;
 async function liveRefresh(silent){
@@ -1788,7 +1843,7 @@ async function liveRefresh(silent){
   const results = await Promise.allSettled(keys.map(k => fetchCategory(k)));
 
   const fresh = JSON.parse(JSON.stringify(state.data));   /* 현재본 복제 */
-  let okCount = 0, failNames = [];
+  let okCount = 0, failNames = [], failDetail = [];
   const LABEL = { canada:'캐나다', korea:'한국', world:'국제', it:'IT',
                   bible:'성경연구', church:'교계', community:'한인사회' };
 
@@ -1804,6 +1859,8 @@ async function liveRefresh(silent){
       }
     } else {
       failNames.push(LABEL[key] || key);
+      const reason = (r.status === 'rejected' && r.reason && r.reason.message) ? r.reason.message : '결과 없음';
+      failDetail.push((LABEL[key]||key) + ' → ' + reason);
     }
   });
 
@@ -1811,11 +1868,10 @@ async function liveRefresh(silent){
     if(!silent){ btn.textContent = '🔄 새로고침'; btn.disabled = false; }
     liveBusy = false;
     stat.textContent = '';
-    if(!silent) alert('자동 새로고침에 실패했습니다.\n\n' +
-      '· 인터넷 연결을 확인해 주세요.\n' +
-      '· 컴퓨터·폰에 저장된 파일(file://)로 열면 보안상 막힐 수 있습니다.\n' +
-      '  이때는 대시보드를 웹주소(https://…)에 올려두면 새로고침이 작동합니다.\n' +
-      '  (그동안은 “⬇ 데이터 갱신”으로 채우실 수 있습니다.)');
+    if(!silent) alert('뉴스를 불러오지 못했습니다.\n\n' +
+      '[막힌 지점]\n' + (failDetail.slice(0,4).join('\n') || '알 수 없음') + '\n\n' +
+      '중계 서버(프록시)가 모두 막히면 이렇게 됩니다.\n' +
+      '잠시 뒤 다시 시도하시거나, “⬇ 데이터 갱신”으로 채우실 수 있습니다.');
     return;
   }
 
@@ -1824,7 +1880,9 @@ async function liveRefresh(silent){
   try{ localStorage.setItem('nd_livecache', JSON.stringify(fresh)); }catch(e){}
   ingest(fresh, silent);      /* 저장 + 새 항목 계산 (자동 갱신은 새로고침 없이) */
 
-  if(silent){ stat.textContent = ''; }
+  if(failNames.length && stat) stat.textContent = '(' + failNames.join('·') + ' 실패)';
+  else if(stat) stat.textContent = '';
+  if(silent){ /* 조용한 갱신은 그대로 둔다 */ }
   if(!silent){ btn.textContent = '🔄 새로고침'; btn.disabled = false; }
   liveBusy = false;
   if(failNames.length) stat.textContent = '(' + failNames.join('·') + ' 제외)';
@@ -1880,6 +1938,7 @@ function init(){
   /* 데이터 갱신 모달 */
   document.getElementById('liveBtn').onclick = () => liveRefresh(false);
   document.getElementById('trBtn').onclick = translateCurrentView;
+  document.getElementById('diagBtn').onclick = runDiagnostics;
   const modal = document.getElementById('modal'), msg = document.getElementById('dataMsg');
   const closeModal = () => { modal.classList.remove('open'); document.body.style.overflow=''; };
   document.getElementById('dataBtn').onclick = () => {
